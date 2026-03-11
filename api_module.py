@@ -1,5 +1,6 @@
 import requests
 
+
 def get_product_from_api(product_name):
 
     url = "https://world.openfoodfacts.org/cgi/search.pl"
@@ -8,22 +9,36 @@ def get_product_from_api(product_name):
         "search_terms": product_name,
         "search_simple": 1,
         "action": "process",
-        "json": 1
+        "json": 1,
+        "page_size": 1
     }
 
-    response = requests.get(url, params=params)
+    try:
+        response = requests.get(url, params=params, timeout=5)
+        response.raise_for_status()
 
-    data = response.json()
+        data = response.json()
 
-    if data["products"]:
+    except requests.exceptions.RequestException:
+        return None
 
-        product = data["products"][0]
+    products = data.get("products")
 
-        return {
-            "product_name": product.get("product_name"),
-            "brands": product.get("brands"),
-            "ingredients_text": product.get("ingredients_text"),
-            "categories": product.get("categories")
+    if not products:
+        return None
+
+    product = products[0]
+
+    nutriments = product.get("nutriments", {})
+
+    return {
+        "product_name": product.get("product_name", "Unknown"),
+        "brand": product.get("brands", "Unknown"),
+        "ingredients": product.get("ingredients_text", "Not available"),
+        "categories": product.get("categories", "Not available"),
+        "nutrition": {
+            "energy": nutriments.get("energy", "Not available"),
+            "fat": nutriments.get("fat", "Not available"),
+            "sugars": nutriments.get("sugars", "Not available")
         }
-
-    return None
+    }
